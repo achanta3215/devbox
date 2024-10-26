@@ -8,13 +8,16 @@ on:
 jobs:
   tag-version:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Ensure the GITHUB_TOKEN has write permissions
 
     steps:
-      # Step 1: Checkout the code with full history
+      # Step 1: Checkout the code with full history and persist credentials
       - name: Checkout code
         uses: actions/checkout@v3
         with:
           fetch-depth: 0  # Fetch full history to allow tagging
+          persist-credentials: true  # Keep the token so we can push tags
 
       # Step 2: Set up Git user
       - name: Set up Git user
@@ -61,10 +64,12 @@ jobs:
       - name: Push tag to GitHub
         if: steps.create_tag.outputs.tag_exists == 'false'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG_NAME: ${{ steps.create_tag.outputs.tag_name }}
         run: |
           set -x  # Enable command tracing for debugging
+
+          # Ensure the remote URL is using HTTPS
+          git remote set-url origin "https://github.com/${{ github.repository }}.git"
 
           # Verify the tag exists locally before pushing
           if git show-ref --tags | grep -qw "refs/tags/$TAG_NAME"; then
