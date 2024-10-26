@@ -22,28 +22,33 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-      # Step 3: Extract version from Cargo.toml and create a tag
+      # Step 3: Extract version from Cargo.toml with debugging enabled
       - name: Extract version and create tag
         id: tag_version
         run: |
+          set -x  # Enable command tracing
+          
           # Extract version from Cargo.toml
           VERSION=$(grep '^version' Cargo.toml | sed -E 's/version = "(.*)"/\1/')
           echo "Extracted version: $VERSION"
 
-          # Check if the version was extracted correctly
+          # Verify that VERSION was set
           if [ -z "$VERSION" ]; then
             echo "Error: Version could not be extracted from Cargo.toml."
             exit 1
           fi
 
+          # Define the tag name
+          TAG_NAME="v$VERSION"
+          echo "Tag name to be created: $TAG_NAME"
+
           # Check if the tag already exists remotely
-          if git ls-remote --tags origin | grep -q "refs/tags/v$VERSION"; then
-            echo "Tag v$VERSION already exists on remote. Skipping tag creation."
+          if git ls-remote --tags origin | grep -q "refs/tags/$TAG_NAME"; then
+            echo "Tag $TAG_NAME already exists on remote. Skipping tag creation."
             exit 0
           fi
 
           # Create the tag on the latest commit
-          TAG_NAME="v$VERSION"
           git tag "$TAG_NAME" -m "Release version $VERSION"
           echo "Tag $TAG_NAME created."
 
@@ -52,8 +57,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          set -x  # Enable command tracing
+          
           # Verify the tag exists locally before pushing
-          TAG_NAME="v$VERSION"
           if git show-ref --tags | grep -q "refs/tags/$TAG_NAME"; then
             echo "Tag $TAG_NAME exists locally. Proceeding with push."
             git push origin "$TAG_NAME"
