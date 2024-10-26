@@ -1,70 +1,45 @@
-name: Tag on Version Change
+name: Tag and Release on Version Change
 
 on:
   push:
     paths:
-      - "Cargo.toml"  # Trigger workflow only when Cargo.toml changes
+      - "Cargo.toml"
+  workflow_dispatch:
 
 jobs:
-  tag-version:
+  tag-and-release:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout the code with full history
+      # Step 1: Checkout the code
       - name: Checkout code
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0  # Fetch full history to allow tagging
+          fetch-depth: 0  # Fetch all history for tagging
 
-      # Step 2: Set up Git user
-      - name: Set up Git user
+      # Step 2: Set up Rust environment (optional, for version extraction)
+      - name: Set up Rust
+        uses: actions/setup-rust@v1
+
+      # Step 3: Extract version from Cargo.toml
+      - name: Extract version from Cargo.toml
+        id: get_version
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          VERSION=$(awk -F\" '/^version =/ { print $2 }' Cargo.toml)
+          echo "Version extracted: $VERSION"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      # Step 3: Extract version from Cargo.toml with debugging enabled
-      - name: Extract version and create tag
-        id: tag_version
-        run: |
-          set -x  # Enable command tracing
-          
-          # Extract version from Cargo.toml
-          VERSION=$(grep '^version' Cargo.toml | sed -E 's/version = "(.*)"/\1/')
-          echo "Extracted version: $VERSION"
-
-          # Verify that VERSION was set
-          if [ -z "$VERSION" ]; then
-            echo "Error: Version could not be extracted from Cargo.toml."
-            exit 1
-          fi
-
-          # Define the tag name
-          TAG_NAME="v$VERSION"
-          echo "Tag name to be created: $TAG_NAME"
-
-          # Check if the tag already exists remotely
-          if git ls-remote --tags origin | grep -q "refs/tags/$TAG_NAME"; then
-            echo "Tag $TAG_NAME already exists on remote. Skipping tag creation."
-            exit 0
-          fi
-
-          # Create the tag on the latest commit
-          git tag "$TAG_NAME" -m "Release version $VERSION"
-          echo "Tag $TAG_NAME created."
-
-      # Step 4: Push the tag to GitHub
-      - name: Push tag to GitHub
+      # Step 4: Create Tag and Release
+      - name: Create Tag and Release
+        uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -x  # Enable command tracing
-          
-          # Verify the tag exists locally before pushing
-          if git show-ref --tags | grep -q "refs/tags/$TAG_NAME"; then
-            echo "Tag $TAG_NAME exists locally. Proceeding with push."
-            git push origin "$TAG_NAME"
-          else
-            echo "Error: Tag $TAG_NAME does not exist locally."
-            exit 1
-          fi
+        with:
+          tag_name: v${{ steps.get_version.outputs.version }}
+          release_name: Release v${{ steps.get_version.outputs.version }}
+          body: |
+            ## Changes in this release
+            - Describe your changes here.
+          draft: false
+          prerelease: false
 
