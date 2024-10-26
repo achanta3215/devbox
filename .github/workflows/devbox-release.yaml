@@ -93,8 +93,8 @@ jobs:
           tag: latest
           name: Latest Release
           artifacts: |
-            devbox-linux-amd64
-            devbox-macos-arm64
+            devbox-linux-amd64/devbox-linux-amd64
+            devbox-macos-arm64/devbox-linux-arm64
           token: ${{ secrets.GITHUB_TOKEN }}
           allowUpdates: true
           replacesArtifacts: true
