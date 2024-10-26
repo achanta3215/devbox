@@ -1,12 +1,10 @@
 name: Build and Release Rust Binary
 
 on:
-  # Trigger workflow on demand
-  workflow_dispatch:
-  # Trigger workflow when pushing a tag, e.g., `v1.0`
-  push:
-    tags:
-      - 'v*'
+  workflow_run:
+    workflows: ["Tag on Version Change"]
+    types:
+      - completed
 
 jobs:
   build-linux:
