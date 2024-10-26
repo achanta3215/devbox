@@ -58,9 +58,14 @@ fn main() {
                         .help("Specify which container to forward the port from"),
                 )
                 .arg(
-                    Arg::new("port")
+                    Arg::new("src")
                         .required(true)
-                        .help("Specify the port to forward from the container"),
+                        .help("Specify the destination port on the client side"),
+                )
+                .arg(
+                    Arg::new("dest")
+                        .required(true)
+                        .help("Specify the source port on the container side"),
                 ),
         )
         .get_matches();
@@ -96,13 +101,15 @@ fn main() {
         Some(("fp", sub_m)) => {
             let sshname = sub_m.get_one::<String>("sshname").unwrap();
             let container = sub_m.get_one::<String>("container").unwrap();
-            let port = sub_m.get_one::<String>("port").unwrap();
+            let src_port = sub_m.get_one::<String>("src").unwrap();
+            let dest_port = sub_m.get_one::<String>("dest").unwrap();
 
             match fetch_container_ip(sshname, container) {
                 Ok(container_ip) => {
+                    // Use src_port as the local port and dest_port as the container's port
                     let ssh_command = format!(
-                        "ssh -L {0}:{1}:{0} {2} -N",
-                        port, container_ip, sshname
+                        "ssh -L {0}:{1}:{2} {3} -N",
+                        src_port, container_ip, dest_port, sshname
                     );
                     execute_command(&ssh_command, &format!("Port forwarding for container '{}'", container));
                 }

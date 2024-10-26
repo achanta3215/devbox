@@ -1,0 +1,41 @@
+name: Tag on Version Change
+
+on:
+  push:
+    paths:
+      - "Cargo.toml"  # Trigger workflow only when Cargo.toml changes
+
+jobs:
+  tag-version:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Step 2: Set up Git user
+      - name: Set up Git user
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      # Step 3: Extract version from Cargo.toml and create a tag
+      - name: Extract version and create tag
+        id: tag_version
+        run: |
+          # Extract version from Cargo.toml
+          VERSION=$(grep '^version' Cargo.toml | sed -E 's/version = "(.*)"/\1/')
+          echo "VERSION=$VERSION"
+          # Create a Git tag with the version
+          git tag "v$VERSION"
+          # Store the tag name as an output for use in later steps
+          echo "tag_name=v$VERSION" >> $GITHUB_ENV
+
+      # Step 4: Push the tag to GitHub
+      - name: Push tag to GitHub
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git push origin "v$VERSION"
+
