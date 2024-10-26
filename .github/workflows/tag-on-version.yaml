@@ -13,6 +13,8 @@ jobs:
       # Step 1: Checkout the code
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Ensure full history is available for tagging
 
       # Step 2: Set up Git user
       - name: Set up Git user
@@ -26,11 +28,23 @@ jobs:
         run: |
           # Extract version from Cargo.toml
           VERSION=$(grep '^version' Cargo.toml | sed -E 's/version = "(.*)"/\1/')
-          echo "VERSION=$VERSION"
-          # Create a Git tag with the version
+          echo "Extracted version: $VERSION"
+
+          # Check if the version was extracted correctly
+          if [ -z "$VERSION" ]; then
+            echo "Error: Version could not be extracted from Cargo.toml."
+            exit 1
+          fi
+
+          # Check if the tag already exists
+          if git rev-parse "v$VERSION" >/dev/null 2>&1; then
+            echo "Tag v$VERSION already exists. Skipping tag creation."
+            exit 0
+          fi
+
+          # Create the Git tag
           git tag "v$VERSION"
-          # Store the tag name as an output for use in later steps
-          echo "tag_name=v$VERSION" >> $GITHUB_ENV
+          echo "Tag v$VERSION created."
 
       # Step 4: Push the tag to GitHub
       - name: Push tag to GitHub
