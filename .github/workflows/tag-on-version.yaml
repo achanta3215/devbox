@@ -44,7 +44,7 @@ jobs:
 
           # Create the tag on the latest commit
           git tag "v$VERSION" -m "Release version $VERSION"
-          echo "Tag v$VERSION created."
+          echo "Tag v$VERSION created and checked out."
 
       # Step 4: Push the tag to GitHub
       - name: Push tag to GitHub
@@ -52,11 +52,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Verify the tag exists locally before pushing
-          if git show-ref --tags | grep -q "refs/tags/v$VERSION"; then
-            echo "Tag v$VERSION exists locally. Proceeding with push."
-            git push origin "v$VERSION"
+          TAG_NAME="v$VERSION"
+          if git show-ref --tags | grep -q "refs/tags/$TAG_NAME"; then
+            echo "Tag $TAG_NAME exists locally. Proceeding with push."
+            git push origin "$TAG_NAME"
           else
-            echo "Error: Tag v$VERSION does not exist locally."
+            echo "Error: Tag $TAG_NAME does not exist locally."
             exit 1
           fi
 
