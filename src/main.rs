@@ -44,6 +44,25 @@ fn main() {
             Command::new("list")
                 .about("List stored container names for all SSH hosts"),
         )
+        .subcommand(
+            Command::new("fp")
+                .about("Forward port from a specific container to the calling host")
+                .arg(
+                    Arg::new("sshname")
+                        .required(true)
+                        .help("SSH name for the remote machine"),
+                )
+                .arg(
+                    Arg::new("container")
+                        .required(true)
+                        .help("Specify which container to forward the port from"),
+                )
+                .arg(
+                    Arg::new("port")
+                        .required(true)
+                        .help("Specify the port to forward from the container"),
+                ),
+        )
         .get_matches();
 
     match matches.subcommand() {
@@ -74,12 +93,87 @@ fn main() {
                 Err(e) => eprintln!("Error loading storage: {}", e),
             }
         }
+        Some(("fp", sub_m)) => {
+            let sshname = sub_m.get_one::<String>("sshname").unwrap();
+            let container = sub_m.get_one::<String>("container").unwrap();
+            let port = sub_m.get_one::<String>("port").unwrap();
+
+            match fetch_container_ip(sshname, container) {
+                Ok(container_ip) => {
+                    let ssh_command = format!(
+                        "ssh -L {0}:{1}:{0} {2} -N",
+                        port, container_ip, sshname
+                    );
+                    execute_command(&ssh_command, &format!("Port forwarding for container '{}'", container));
+                }
+                Err(e) => eprintln!("Failed to fetch IP for container '{}': {}", container, e),
+            }
+        }
         _ => eprintln!("No valid subcommand was provided"),
     }
 }
 
+fn fetch_container_ip(sshname: &str, container: &str) -> io::Result<String> {
+    // Step 1: Fetch the network name(s) for the container
+    let network_output = ShellCommand::new("ssh")
+        .arg(sshname)
+        .arg(format!(
+            "docker inspect {} | jq -r '.[0].NetworkSettings.Networks | keys[0]'",
+            container
+        ))
+        .output()?;
+
+    if !network_output.status.success() {
+        eprintln!(
+            "Error fetching network name: {}",
+            String::from_utf8_lossy(&network_output.stderr)
+        );
+        return Err(io::Error::new(
+            io::ErrorKind::Other,
+            "Failed to fetch container network name over SSH",
+        ));
+    }
+
+    let network_name = String::from_utf8_lossy(&network_output.stdout).trim().to_string();
+    if network_name.is_empty() {
+        return Err(io::Error::new(
+            io::ErrorKind::Other,
+            "No network found for the specified container",
+        ));
+    }
+
+    // Step 2: Fetch the container IP address on the determined network
+    let ip_output = ShellCommand::new("ssh")
+        .arg(sshname)
+        .arg(format!(
+            "docker inspect {} | jq -r '.[0].NetworkSettings.Networks[\"{}\"].IPAddress'",
+            container, network_name
+        ))
+        .output()?;
+
+    if !ip_output.status.success() {
+        eprintln!(
+            "Error fetching IP address: {}",
+            String::from_utf8_lossy(&ip_output.stderr)
+        );
+        return Err(io::Error::new(
+            io::ErrorKind::Other,
+            "Failed to fetch container IP address over SSH",
+        ));
+    }
+
+    let ip_address = String::from_utf8_lossy(&ip_output.stdout).trim().to_string();
+    if ip_address.is_empty() {
+        Err(io::Error::new(
+            io::ErrorKind::Other,
+            "No IP address assigned to the container on the detected network",
+        ))
+    } else {
+        Ok(ip_address)
+    }
+}
+
 fn initialize_containers(sshname: &str) -> io::Result<()> {
-    // Run `docker ps -a` over SSH to get container names
     let output = ShellCommand::new("ssh")
         .arg(sshname)
         .arg("docker ps -a --format {{.Names}}")
@@ -92,19 +186,16 @@ fn initialize_containers(sshname: &str) -> io::Result<()> {
         ));
     }
 
-    // Parse the container names from the command output
     let container_names: Vec<String> = String::from_utf8_lossy(&output.stdout)
         .lines()
         .map(|line| line.trim().to_string())
         .collect();
 
-    // Load existing storage and add the new SSH name and containers
     let mut storage = load_storage().unwrap_or_else(|_| DevboxStorage {
         containers: HashMap::new(),
     });
     storage.containers.insert(sshname.to_string(), container_names);
 
-    // Save updated storage
     save_storage(&storage)
 }
 
