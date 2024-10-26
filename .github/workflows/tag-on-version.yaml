@@ -43,8 +43,9 @@ jobs:
           fi
 
           # Create the tag on the latest commit
-          git tag "v$VERSION" -m "Release version $VERSION"
-          echo "Tag v$VERSION created and checked out."
+          TAG_NAME="v$VERSION"
+          git tag "$TAG_NAME" -m "Release version $VERSION"
+          echo "Tag $TAG_NAME created."
 
       # Step 4: Push the tag to GitHub
       - name: Push tag to GitHub
