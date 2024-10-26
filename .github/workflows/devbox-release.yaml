@@ -32,14 +32,14 @@ jobs:
       - name: Collect Linux Binary
         run: |
           mkdir -p artifacts
-          cp target/release/your_binary_name artifacts/your_binary_name-linux-amd64
+          cp target/release/devbox artifacts/devbox-linux-amd64
         shell: bash
 
       - name: Upload Linux Binary
         uses: actions/upload-artifact@v4
         with:
           name: devbox-linux-amd64
-          path: artifacts/your_binary_name-linux-amd64
+          path: artifacts/devbox-linux-amd64
 
   build-macos:
     name: Build for macOS (arm64)
@@ -67,14 +67,14 @@ jobs:
       - name: Collect macOS Binary
         run: |
           mkdir -p artifacts
-          cp target/release/your_binary_name artifacts/your_binary_name-macos-arm64
+          cp target/release/devbox artifacts/devbox-macos-arm64
         shell: bash
 
       - name: Upload macOS Binary
         uses: actions/upload-artifact@v4
         with:
           name: devbox-macos-arm64
-          path: artifacts/your_binary_name-macos-arm64
+          path: artifacts/devbox-macos-arm64
 
   release:
     name: Release
@@ -96,8 +96,8 @@ jobs:
           tag: ${{ github.ref_name }}
           name: Release ${{ github.ref_name }}
           artifacts: |
-            artifacts/your_binary_name-linux-amd64
-            artifacts/your_binary_name-macos-arm64
+            artifacts/devbox-linux-amd64
+            artifacts/devbox-macos-arm64
           token: ${{ secrets.GITHUB_TOKEN }}
           allowUpdates: true
           overwrite: true
