@@ -14,9 +14,6 @@ jobs:
     name: Build for Linux (amd64)
     runs-on: ubuntu-latest
 
-    outputs:
-      artifact_name: devbox-linux-amd64
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -47,9 +44,6 @@ jobs:
   build-macos:
     name: Build for macOS (arm64)
     runs-on: macos-latest
-
-    outputs:
-      artifact_name: devbox-macos-arm64
 
     steps:
       - name: Checkout code
@@ -87,21 +81,21 @@ jobs:
       contents: write  # Grant write permissions for this job
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
       - name: Download Artifacts
         uses: actions/download-artifact@v4
-        with:
-          path: artifacts/
 
-      - name: Create GitHub Release and Upload Assets
+      - name: List Downloaded Artifacts
+        run: ls -l
+
+      - name: Create or Update Release and Upload Assets
         uses: ncipollo/release-action@v1
         with:
-          tag: ${{ github.ref_name }}
-          name: Release ${{ github.ref_name }}
+          tag: latest
+          name: Latest Release
           artifacts: |
-            artifacts/devbox-linux-amd64
-            artifacts/devbox-macos-arm64
+            devbox-linux-amd64
+            devbox-macos-arm64
           token: ${{ secrets.GITHUB_TOKEN }}
           allowUpdates: true
+          replacesArtifacts: true
+
