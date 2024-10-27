@@ -82,7 +82,7 @@ fn main() {
             let sshname = sub_m.get_one::<String>("sshname").unwrap();
             let container = sub_m.get_one::<String>("container").unwrap();
             let ssh_command = format!(
-                "ssh {} -t 'docker exec -it {} bash -c \"tmux attach-session -t nvim || tmux new-session -s nvim\"'",
+                "mosh {} -- \"docker exec -it {} bash -c 'tmux attach-session -t nvim || tmux new-session -s nvim'\"",
                 sshname, container
             );
             execute_command(&ssh_command, &format!("Neovim in container '{}'", container));
